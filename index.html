@@ -33,7 +33,6 @@
     height:100%; overscroll-behavior-y:contain;}
   body{padding-bottom:78px;}
   h1,h2,h3{font-family:Georgia,"Iowan Old Style",serif; margin:0; letter-spacing:.03em;}
-  .eyebrow{font-size:11px; text-transform:uppercase; letter-spacing:.16em; color:var(--muted2); font-weight:600;}
 
   header.top{
     position:sticky; top:0; z-index:10;
@@ -59,7 +58,6 @@
 
   .empty{color:var(--muted2); font-size:13px; text-align:center; padding:18px 8px; border:1px dashed var(--panel-line); border-radius:8px;}
 
-  /* Slot / token card */
   .token{
     display:flex; align-items:center; gap:10px;
     background:var(--panel-raised);
@@ -72,7 +70,7 @@
   .token .elico{font-size:18px; width:22px; text-align:center; flex-shrink:0;}
   .token .meta{flex:1; min-width:0;}
   .token .meta .name{font-size:13.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .token .meta .tags{font-size:11px; color:var(--muted); margin-top:1px;}
+  .token .meta .tags{font-size:11px; color:var(--muted); margin-top:1px; display:flex; flex-wrap:wrap; gap:4px; align-items:center;}
   .rarity-badge{
     font-size:9.5px; text-transform:uppercase; letter-spacing:.06em; font-weight:700;
     padding:2px 6px; border-radius:20px; white-space:nowrap;
@@ -83,6 +81,14 @@
   .r-episch{background:#b787e0;}
   .r-legendaer{background:#e0ac4a;}
   .r-mystisch{background:linear-gradient(90deg,#e0ac4a,#c95ae0); color:#14110f;}
+  .ability-badge{
+    font-size:9.5px; padding:2px 6px; border-radius:20px; background:#2c2116; color:var(--brass);
+    border:1px solid var(--brass-dim); white-space:nowrap;
+  }
+  .type-badge{
+    font-size:9.5px; padding:2px 6px; border-radius:20px; background:#22282a; color:var(--muted);
+    border:1px solid var(--panel-line); white-space:nowrap;
+  }
 
   .token .action{flex-shrink:0;}
 
@@ -106,7 +112,6 @@
     box-shadow:0 4px 14px rgba(0,0,0,.5);
   }
 
-  /* Progress / smelting bar */
   .pour-bar{
     height:9px; border-radius:6px; overflow:hidden;
     background:#100d0b; border:1px solid var(--panel-line);
@@ -122,7 +127,6 @@
   .timer-row{display:flex; justify-content:space-between; align-items:center; font-size:11.5px; color:var(--muted);}
   .timer-row .clock{font-variant-numeric:tabular-nums; color:var(--brass);}
 
-  /* Bottom nav */
   nav.bottom{
     position:fixed; bottom:0; left:0; right:0; z-index:30;
     background:#181310; border-top:1px solid var(--panel-line);
@@ -138,7 +142,6 @@
   .tabpage{display:none;}
   .tabpage.active{display:block;}
 
-  /* Modal */
   .modal-backdrop{
     position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:50;
     display:none; align-items:flex-end;
@@ -193,7 +196,6 @@
   .mastery-track{display:flex; gap:3px; margin:10px 0;}
   .mastery-pip{flex:1; height:8px; border-radius:3px; background:#100d0b; border:1px solid var(--panel-line);}
   .mastery-pip.filled{background:var(--brass); border-color:var(--brass);}
-  .mastery-pip.mark5, .mastery-pip.mark8{outline:1px solid var(--muted2); outline-offset:1px;}
 
   .stat-line{display:flex; justify-content:space-between; font-size:13px; padding:6px 0; border-bottom:1px solid var(--panel-line);}
   .stat-line:last-child{border-bottom:none;}
@@ -203,7 +205,7 @@
     position:fixed; left:50%; bottom:90px; transform:translateX(-50%);
     background:#2c2116; border:1px solid var(--brass-dim); color:var(--brass);
     padding:10px 16px; border-radius:20px; font-size:13px; z-index:60;
-    opacity:0; pointer-events:none; transition:opacity .25s;
+    opacity:0; pointer-events:none; transition:opacity .25s; max-width:88vw; text-align:center;
   }
   .toast.show{opacity:1;}
 </style>
@@ -220,21 +222,21 @@
   <!-- LAGER -->
   <section class="tabpage active" id="page-lager">
     <div class="panel">
+      <div class="panel-head"><h2>Fertige Items</h2><span class="count" id="cnt-items">0</span></div>
+      <div id="list-items"></div>
+    </div>
+    <div class="panel">
       <div class="panel-head"><h2>Rohmaterialien</h2><span class="count" id="cnt-materials">0</span></div>
       <div id="list-materials"></div>
     </div>
     <div class="panel">
       <div class="panel-head"><h2>Katalysatoren (Kerne)</h2><span class="count" id="cnt-kerns">0</span></div>
       <div id="list-kerns"></div>
-      <div class="hint">Kerne werden nicht veredelt. Setze sie beim Schmieden als optionalen Katalysator ein — sie erhöhen die Chance auf eine höhere Ziel-Seltenheit.</div>
+      <div class="hint">Kerne werden nicht veredelt. Setze sie beim Schmieden als optionalen Katalysator ein.</div>
     </div>
     <div class="panel">
       <div class="panel-head"><h2>Essenzen (veredelt)</h2><span class="count" id="cnt-essences">0</span></div>
       <div id="list-essences"></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><h2>Fertige Items</h2><span class="count" id="cnt-items">0</span></div>
-      <div id="list-items"></div>
     </div>
   </section>
 
@@ -259,13 +261,27 @@
     </div>
     <div class="panel">
       <div class="panel-head"><h2>Neues Item schmieden</h2></div>
+
+      <label>Kategorie</label>
+      <div class="radiorow" id="craft-cat-row">
+        <label class="opt checked" data-cat="Waffe">⚔️ Waffe</label>
+        <label class="opt" data-cat="Rüstung">🛡️ Rüstung</label>
+      </div>
+
+      <label>Typ</label>
+      <select id="craft-type"></select>
+
       <label>Essenzen auswählen (2–<span id="max-inputs-label">3</span>)</label>
       <div class="select-picker" id="essence-picker"></div>
+
       <label>Katalysator (optional)</label>
       <div class="select-picker" id="kern-picker"></div>
+
       <div id="craft-preview" class="hint"></div>
+
       <label>Name des Items</label>
       <input type="text" id="craft-name" placeholder="z.B. Windschneiden-Klinge">
+
       <div class="modal-actions">
         <button class="btn-primary btn-block" id="btn-start-craft">Schmieden starten</button>
       </div>
@@ -291,7 +307,18 @@
       <div class="stat-line"><span>Stationen</span><span class="v" id="mc-slots">1</span></div>
       <div class="stat-line"><span>Max. Essenzen pro Item</span><span class="v" id="mc-maxinputs">3</span></div>
       <div class="stat-line"><span>Abgeschlossene Schmiedungen</span><span class="v" id="mc-count">0</span></div>
-      <div class="hint">+1 Stufe je 5 abgeschlossene Schmiedungen. Bei Stufe 5 und 8 schaltet sich je eine zusätzliche Station frei, ab Stufe 6 ein zusätzlicher Essenz-Slot pro Rezept.</div>
+      <div class="hint">+1 Stufe je 5 abgeschlossene Schmiedungen. Bei Stufe 5 und 8 zusätzliche Station, ab Stufe 6 ein zusätzlicher Essenz-Slot.</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Chancen-Übersicht (Schmieden)</h2></div>
+      <div class="hint">
+        <b>Ziel-Seltenheit</b> = gerundeter Durchschnitt der gewählten Essenzen.<br>
+        <b>Stufen-Aufwertung</b> (+1 Seltenheit) — Chancen addieren sich:<br>
+        · Katalysator (Kern): 5–25% je nach Kern-Seltenheit<br>
+        · Reines Element (alle Essenzen gleiches Element): +15%<br>
+        · Jede Essenz über dem Minimum (2) hinaus: +5%<br>
+        <b>Fähigkeits-Slots</b> nach finaler Seltenheit: Gewöhnlich 0 · Selten 0–1 · Episch 1–2 · Legendär 1–2 · Mystisch 1–3 (zufällig ausgewürfelt, du bestimmst die Fähigkeiten selbst).
+      </div>
     </div>
     <div class="panel">
       <button class="btn-danger btn-block" id="btn-reset">Speicherstand zurücksetzen</button>
@@ -322,12 +349,11 @@
       <label class="opt" data-mode="single">Einzeln</label>
     </div>
 
-    <!-- PASTE MODE -->
     <div id="mode-paste">
       <label>Loot einfügen</label>
       <textarea id="paste-input" rows="6" placeholder="1x Windschuppe (Gewöhnlich – Wirbeldrache)
 1x Wirbeldrache Kern (Mystisch – Wirbeldrache Kern)"></textarea>
-      <div class="hint">Eine Zeile pro Item, im gewohnten Format. Kerne werden automatisch erkannt (Name endet auf „Kern"). Mehrere Zeilen möglich.</div>
+      <div class="hint">Eine Zeile pro Item, im gewohnten Format. Kerne werden automatisch erkannt (Name endet auf „Kern").</div>
       <div id="paste-preview"></div>
       <div class="modal-actions">
         <button class="btn-ghost" id="btn-parse-paste">Prüfen</button>
@@ -335,7 +361,6 @@
       </div>
     </div>
 
-    <!-- SINGLE MODE -->
     <div id="mode-single" style="display:none;">
       <label>Typ</label>
       <div class="radiorow" id="add-kind-row">
@@ -372,28 +397,20 @@
 
 // ---------- DATA: 80 Monster -> Element ----------
 const MONSTER_ELEMENT = {
-  // Feuer
   "Glutmolch":"fire","Aschenläufer":"fire","Funkenspinne":"fire","Lavakröte":"fire","Glutwolf":"fire",
   "Aschegeist":"fire","Infernobestie":"fire","Flammenwächter":"fire","Glutbestie":"fire","Infernodrache":"fire",
-  // Eis
   "Frostkäfer":"ice","Eisnadler":"ice","Schneewicht":"ice","Frostwolf":"ice","Eisgolem":"ice",
   "Frostgeist":"ice","Frostriese":"ice","Kristallhydra":"ice","Ewiger Frost":"ice","Eisphönix":"ice",
-  // Wasser
   "Schlammsauger":"water","Nebelqualle":"water","Moosqualle":"water","Tiefenkrabbe":"water","Strudelgeist":"water",
   "Giftaal":"water","Tiefenwächter":"water","Wellenbrecherin":"water","Meereskoloss":"water","Tiefengeist":"water",
-  // Donner
   "Knisterratte":"thunder","Blitzkäfer":"thunder","Donnerläufer":"thunder","Sturmfalke":"thunder","Blitzeber":"thunder",
   "Donnerwurm":"thunder","Sturmdrache":"thunder","Gewitterriese":"thunder","Sturmtitan":"thunder","Blitzphönix":"thunder",
-  // Licht
   "Lichtmotte":"light","Sonnenwiesel":"light","Lichtläufer":"light","Lichtfuchs":"light","Sonnenwächter":"light",
   "Lichtgeist":"light","Lichtkoloss":"light","Lichtprophet":"light","Sonnenprophet":"light","Lichtgott-Fragment":"light",
-  // Schatten
   "Dunkelwelpe":"shadow","Schattenmotte":"shadow","Schattenmaus":"shadow","Schattenläufer":"shadow","Schattenwolf":"shadow",
   "Schattendoppelgänger":"shadow","Schattenfürst":"shadow","Schattenklaue":"shadow","Schattenkönig":"shadow","Schattengeist":"shadow",
-  // Wind
   "Wirbelwiesel":"wind","Windgeist":"wind","Staubläufer":"wind","Wirbeldrache":"wind","Sturmgeist":"wind",
   "Windbär":"wind","Sturmadler":"wind","Windriese":"wind","Sturmtyphon":"wind","Windgott-Fragment":"wind",
-  // Erde
   "Erdkraller":"earth","Steinbeißer":"earth","Erdmaulwurf":"earth","Steingolem":"earth","Erdkrabbe":"earth",
   "Erdschlange":"earth","Steinkoloss":"earth","Felstitan":"earth","Erdgott-Fragment":"earth","Steintitan":"earth"
 };
@@ -405,24 +422,22 @@ const RARITY_ORDER = ["Gewöhnlich","Selten","Episch","Legendär","Mystisch"];
 const RARITY_CLASS = {"Gewöhnlich":"r-gewoehnlich","Selten":"r-selten","Episch":"r-episch","Legendär":"r-legendaer","Mystisch":"r-mystisch"};
 const RARITY_IDX = r => RARITY_ORDER.indexOf(r);
 
-// base durations in ms
+const WEAPON_TYPES = ["Langschwert","Katana","Großschwert","Axt","Bogen","Kampfhandschuhe","Zauberstab","Dolch","Rapier","Peitsche"];
+const ARMOR_SLOTS = ["Helm","Brust","Beinrüstung","Schuhe","Handschuhe","Schmuck"];
+
 const REFINE_HOURS = {"Gewöhnlich":2,"Selten":6,"Episch":16,"Legendär":36,"Mystisch":72};
 const CRAFT_HOURS  = {"Gewöhnlich":4,"Selten":10,"Episch":24,"Legendär":48,"Mystisch":96};
 const CATALYST_CHANCE = {"Gewöhnlich":0.05,"Selten":0.10,"Episch":0.15,"Legendär":0.20,"Mystisch":0.25};
 const H = 3600000;
 
 // ---------- STATE ----------
-const SAVE_KEY = "werkstatt-save-v1";
+const SAVE_KEY = "werkstatt-save-v2";
 let state = loadState();
 
 function defaultState(){
   return {
-    materials: [],   // {id,name,kind:'material',rarity,monster,element}
-    kerns: [],       // {id,name,kind:'kern',rarity,monster,element}
-    essences: [],    // {id,name,rarity,element,sourceMonster}
-    items: [],       // {id,name,rarity,element,finishedAt}
-    refining: [],    // {id,name,rarity,element,monster,startedAt,finishAt}
-    crafting: [],    // {id,name,rarity,element,startedAt,finishAt,inputNames:[]}
+    materials: [], kerns: [], essences: [], items: [],
+    refining: [], crafting: [],
     masteryRefineCount: 0,
     masteryCraftCount: 0
   };
@@ -441,7 +456,7 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 
 // ---------- MASTERY ----------
 function masteryLevel(count){ return Math.min(10, Math.floor(count/5)); }
-function speedMult(level){ return 1 - (level*0.05); } // -5% per level, max -50%
+function speedMult(level){ return 1 - (level*0.05); }
 function refineSlots(level){ return 1 + (level>=5?1:0) + (level>=8?1:0); }
 function craftSlots(level){ return 1 + (level>=5?1:0) + (level>=8?1:0); }
 function maxCraftInputs(level){ return 3 + (level>=6?1:0); }
@@ -453,7 +468,7 @@ function toast(msg){
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2400);
 }
 
 // ---------- NAV ----------
@@ -489,7 +504,6 @@ document.querySelectorAll('#add-kind-row .opt').forEach(lbl=>{
   });
 });
 
-// ---------- MODE SWITCH (Paste / Single) ----------
 document.querySelectorAll('#add-mode-row .opt').forEach(lbl=>{
   lbl.addEventListener('click', ()=>{
     document.querySelectorAll('#add-mode-row .opt').forEach(l=>l.classList.remove('checked'));
@@ -500,105 +514,6 @@ document.querySelectorAll('#add-mode-row .opt').forEach(lbl=>{
   });
 });
 
-// ---------- PASTE PARSER ----------
-// Erwartetes Format je Zeile:
-//   1x Windschuppe (Gewöhnlich – Wirbeldrache)
-//   1x Wirbeldrache Kern (Mystisch – Wirbeldrache Kern)
-const RARITY_ALIASES = {
-  "gewöhnlich":"Gewöhnlich","gewoehnlich":"Gewöhnlich",
-  "selten":"Selten",
-  "episch":"Episch",
-  "legendär":"Legendär","legendaer":"Legendär",
-  "mystisch":"Mystisch"
-};
-
-function parsePasteLine(line){
-  const raw = line.trim();
-  if(!raw) return null;
-  // Dashes normalisieren (–, —, -)
-  const norm = raw.replace(/[–—]/g,'-');
-  const m = norm.match(/^(\d+)\s*x\s+(.+?)\s*\(\s*([^,()]+?)\s*-\s*(.+?)\s*\)\s*$/i);
-  if(!m){
-    return {ok:false, raw, error:'Format nicht erkannt'};
-  }
-  const qty = parseInt(m[1],10) || 1;
-  const itemName = m[2].trim();
-  const rarityRaw = m[3].trim().toLowerCase();
-  let monsterRaw = m[4].trim();
-
-  const rarity = RARITY_ALIASES[rarityRaw];
-  if(!rarity){
-    return {ok:false, raw, error:`Seltenheit „${m[3].trim()}" unbekannt`};
-  }
-
-  let kind = 'material';
-  let monster = monsterRaw;
-  // Kern-Erkennung: Item-Name endet auf "Kern" ODER Monster-Teil endet auf "Kern"
-  if(/\bKern$/i.test(itemName) || /\bKern$/i.test(monsterRaw)){
-    kind = 'kern';
-    monster = monsterRaw.replace(/\s*Kern\s*$/i,'').trim();
-  }
-
-  const element = MONSTER_ELEMENT[monster];
-  if(!element){
-    return {ok:false, raw, error:`Monster „${monster}" nicht gefunden`};
-  }
-
-  return {ok:true, raw, qty, itemName, rarity, kind, monster, element};
-}
-
-function parsePasteBlock(text){
-  return text.split('\n').map(parsePasteLine).filter(r=>r!==null);
-}
-
-let lastParsed = [];
-
-document.getElementById('btn-parse-paste').addEventListener('click', ()=>{
-  const text = document.getElementById('paste-input').value;
-  lastParsed = parsePasteBlock(text);
-  const preview = document.getElementById('paste-preview');
-  const confirmBtn = document.getElementById('btn-confirm-paste');
-
-  if(lastParsed.length===0){
-    preview.innerHTML = '';
-    confirmBtn.disabled = true;
-    return;
-  }
-
-  preview.innerHTML = lastParsed.map(r=>{
-    if(r.ok){
-      return `<div class="paste-line ok"><span class="ptxt">✓ ${r.qty}x ${r.itemName} — ${r.rarity} · ${ELEMENT_ICON[r.element]} ${r.monster}${r.kind==='kern'?' (Kern)':''}</span></div>`;
-    }else{
-      return `<div class="paste-line err"><span class="ptxt">✕ ${r.raw || '(leere Zeile)'} — ${r.error}</span></div>`;
-    }
-  }).join('');
-
-  const anyOk = lastParsed.some(r=>r.ok);
-  confirmBtn.disabled = !anyOk;
-});
-
-document.getElementById('btn-confirm-paste').addEventListener('click', ()=>{
-  let added = 0;
-  lastParsed.forEach(r=>{
-    if(!r.ok) return;
-    for(let i=0;i<r.qty;i++){
-      const entry = {id:uid(), name:r.itemName, kind:r.kind, rarity:r.rarity, monster:r.monster, element:r.element};
-      if(r.kind==='kern') state.kerns.push(entry);
-      else state.materials.push(entry);
-      added++;
-    }
-  });
-  saveState();
-  document.getElementById('paste-input').value='';
-  document.getElementById('paste-preview').innerHTML='';
-  document.getElementById('btn-confirm-paste').disabled = true;
-  lastParsed = [];
-  modalAdd.classList.remove('open');
-  toast(`${added} Item${added===1?'':'s'} hinzugefügt`);
-  renderAll();
-});
-
-// populate datalist
 const datalist = document.getElementById('monster-list');
 Object.keys(MONSTER_ELEMENT).sort().forEach(name=>{
   const opt = document.createElement('option');
@@ -631,28 +546,85 @@ document.getElementById('btn-confirm-add').addEventListener('click', ()=>{
   renderAll();
 });
 
+// ---------- PASTE PARSER ----------
+const RARITY_ALIASES = {
+  "gewöhnlich":"Gewöhnlich","gewoehnlich":"Gewöhnlich","selten":"Selten","episch":"Episch",
+  "legendär":"Legendär","legendaer":"Legendär","mystisch":"Mystisch"
+};
+function parsePasteLine(line){
+  const raw = line.trim();
+  if(!raw) return null;
+  const norm = raw.replace(/[–—]/g,'-');
+  const m = norm.match(/^(\d+)\s*x\s+(.+?)\s*\(\s*([^,()]+?)\s*-\s*(.+?)\s*\)\s*$/i);
+  if(!m) return {ok:false, raw, error:'Format nicht erkannt'};
+  const qty = parseInt(m[1],10) || 1;
+  const itemName = m[2].trim();
+  const rarityRaw = m[3].trim().toLowerCase();
+  let monsterRaw = m[4].trim();
+  const rarity = RARITY_ALIASES[rarityRaw];
+  if(!rarity) return {ok:false, raw, error:`Seltenheit „${m[3].trim()}" unbekannt`};
+  let kind = 'material';
+  let monster = monsterRaw;
+  if(/\bKern$/i.test(itemName) || /\bKern$/i.test(monsterRaw)){
+    kind = 'kern';
+    monster = monsterRaw.replace(/\s*Kern\s*$/i,'').trim();
+  }
+  const element = MONSTER_ELEMENT[monster];
+  if(!element) return {ok:false, raw, error:`Monster „${monster}" nicht gefunden`};
+  return {ok:true, raw, qty, itemName, rarity, kind, monster, element};
+}
+function parsePasteBlock(text){ return text.split('\n').map(parsePasteLine).filter(r=>r!==null); }
+let lastParsed = [];
+
+document.getElementById('btn-parse-paste').addEventListener('click', ()=>{
+  const text = document.getElementById('paste-input').value;
+  lastParsed = parsePasteBlock(text);
+  const preview = document.getElementById('paste-preview');
+  const confirmBtn = document.getElementById('btn-confirm-paste');
+  if(lastParsed.length===0){ preview.innerHTML=''; confirmBtn.disabled=true; return; }
+  preview.innerHTML = lastParsed.map(r=>{
+    if(r.ok) return `<div class="paste-line ok"><span class="ptxt">✓ ${r.qty}x ${r.itemName} — ${r.rarity} · ${ELEMENT_ICON[r.element]} ${r.monster}${r.kind==='kern'?' (Kern)':''}</span></div>`;
+    return `<div class="paste-line err"><span class="ptxt">✕ ${r.raw || '(leere Zeile)'} — ${r.error}</span></div>`;
+  }).join('');
+  confirmBtn.disabled = !lastParsed.some(r=>r.ok);
+});
+
+document.getElementById('btn-confirm-paste').addEventListener('click', ()=>{
+  let added = 0;
+  lastParsed.forEach(r=>{
+    if(!r.ok) return;
+    for(let i=0;i<r.qty;i++){
+      const entry = {id:uid(), name:r.itemName, kind:r.kind, rarity:r.rarity, monster:r.monster, element:r.element};
+      if(r.kind==='kern') state.kerns.push(entry); else state.materials.push(entry);
+      added++;
+    }
+  });
+  saveState();
+  document.getElementById('paste-input').value='';
+  document.getElementById('paste-preview').innerHTML='';
+  document.getElementById('btn-confirm-paste').disabled = true;
+  lastParsed = [];
+  modalAdd.classList.remove('open');
+  toast(`${added} Item${added===1?'':'s'} hinzugefügt`);
+  renderAll();
+});
+
 // ---------- REFINING ----------
 function startRefine(materialId){
   const level = masteryLevel(state.masteryRefineCount);
   const slots = refineSlots(level);
   if(state.refining.length >= slots){ toast('Alle Veredelungs-Stationen belegt'); return; }
-
   const idx = state.materials.findIndex(m=>m.id===materialId);
   if(idx<0) return;
   const mat = state.materials[idx];
   state.materials.splice(idx,1);
-
   const durationMs = REFINE_HOURS[mat.rarity]*H*speedMult(level);
   const now = Date.now();
-  state.refining.push({
-    id:uid(), name:mat.name+" Essenz", rarity:mat.rarity, element:mat.element, monster:mat.monster,
-    startedAt:now, finishAt: now + durationMs
-  });
+  state.refining.push({id:uid(), name:mat.name+" Essenz", rarity:mat.rarity, element:mat.element, monster:mat.monster, startedAt:now, finishAt: now + durationMs});
   saveState();
   toast('Veredelung gestartet');
   renderAll();
 }
-
 function collectRefine(jobId){
   const idx = state.refining.findIndex(j=>j.id===jobId);
   if(idx<0) return;
@@ -669,6 +641,49 @@ function collectRefine(jobId){
 // ---------- CRAFTING ----------
 let selectedEssenceIds = new Set();
 let selectedKernId = null;
+let craftCategory = 'Waffe';
+
+document.querySelectorAll('#craft-cat-row .opt').forEach(lbl=>{
+  lbl.addEventListener('click', ()=>{
+    document.querySelectorAll('#craft-cat-row .opt').forEach(l=>l.classList.remove('checked'));
+    lbl.classList.add('checked');
+    craftCategory = lbl.dataset.cat;
+    populateTypeSelect();
+    renderSchmieden();
+  });
+});
+function populateTypeSelect(){
+  const sel = document.getElementById('craft-type');
+  const list = craftCategory==='Waffe' ? WEAPON_TYPES : ARMOR_SLOTS;
+  sel.innerHTML = list.map(t=>`<option value="${t}">${t}</option>`).join('');
+}
+populateTypeSelect();
+
+function craftBaseRarityFromEssences(chosen){
+  const avg = chosen.reduce((s,e)=>s+RARITY_IDX(e.rarity),0)/chosen.length;
+  return Math.min(4, Math.round(avg));
+}
+function craftTierUpChance(chosen, kern){
+  let chance = 0;
+  if(kern) chance += CATALYST_CHANCE[kern.rarity];
+  const elements = new Set(chosen.map(e=>e.element));
+  const pure = elements.size===1;
+  if(pure) chance += 0.15;
+  const extra = Math.max(0, chosen.length-2);
+  chance += extra*0.05;
+  return {chance: Math.min(0.75, chance), pure};
+}
+function rollAbilitySlots(rarityIdx){
+  if(rarityIdx===0) return 0;
+  if(rarityIdx===1) return Math.random()<0.5 ? 1 : 0;
+  if(rarityIdx===2){ return Math.random()<0.3 ? 2 : 1; }
+  if(rarityIdx===3){ return Math.random()<0.5 ? 2 : 1; }
+  if(rarityIdx===4){
+    if(Math.random()<0.6){ return Math.random()<0.4 ? 3 : 2; }
+    return 1;
+  }
+  return 0;
+}
 
 function computeCraftPreview(){
   const level = masteryLevel(state.masteryCraftCount);
@@ -684,19 +699,17 @@ function computeCraftPreview(){
     btn.disabled = true;
     return;
   }
-  const avg = chosen.reduce((s,e)=>s+RARITY_IDX(e.rarity),0)/chosen.length;
-  let targetIdx = Math.min(4, Math.round(avg));
-  const targetRarityBase = RARITY_ORDER[targetIdx];
-
+  const baseIdx = craftBaseRarityFromEssences(chosen);
+  const baseRarity = RARITY_ORDER[baseIdx];
   const kern = state.kerns.find(k=>k.id===selectedKernId);
-  let chanceText = '';
-  if(kern){
-    const chance = Math.round(CATALYST_CHANCE[kern.rarity]*100);
-    chanceText = `<br>Katalysator ${kern.name} (${kern.rarity}): bis zu ${chance}% Chance auf +1 Ziel-Seltenheit.`;
-  }
+  const {chance, pure} = craftTierUpChance(chosen, kern);
+  const durationH = (CRAFT_HOURS[baseRarity]*speedMult(level));
 
-  const durationH = (CRAFT_HOURS[targetRarityBase]*speedMult(level));
-  preview.innerHTML = `Basis-Ziel-Seltenheit: <b style="color:var(--brass)">${targetRarityBase}</b>${chanceText}<br>Schmiedezeit: ~${durationH.toFixed(1)} h`;
+  let html = `Basis-Ziel-Seltenheit: <b style="color:var(--brass)">${baseRarity}</b><br>`;
+  html += `Aufwertungs-Chance (+1 Stufe): <b style="color:var(--brass)">${Math.round(chance*100)}%</b>${pure?' <i>(reines Element!)</i>':''}<br>`;
+  html += `Schmiedezeit: ~${durationH.toFixed(1)} h`;
+  preview.innerHTML = html;
+
   btn.disabled = false;
 }
 
@@ -707,31 +720,25 @@ document.getElementById('btn-start-craft').addEventListener('click', ()=>{
 
   const chosen = state.essences.filter(e=>selectedEssenceIds.has(e.id));
   if(chosen.length<2){ toast('Mindestens 2 Essenzen wählen'); return; }
-  const name = document.getElementById('craft-name').value.trim() || 'Unbenanntes Item';
 
-  const avg = chosen.reduce((s,e)=>s+RARITY_IDX(e.rarity),0)/chosen.length;
-  let targetIdx = Math.min(4, Math.round(avg));
+  const baseIdx = craftBaseRarityFromEssences(chosen);
+  const baseRarity = RARITY_ORDER[baseIdx];
+  const type = document.getElementById('craft-type').value;
+  const name = document.getElementById('craft-name').value.trim() || `Unbenannte${craftCategory==='Waffe'?'r Waffe':'s Rüstungsteil'}`;
 
   const kern = state.kerns.find(k=>k.id===selectedKernId);
-  if(kern){
-    const chance = CATALYST_CHANCE[kern.rarity];
-    if(Math.random() < chance) targetIdx = Math.min(4, targetIdx+1);
-  }
-  const targetRarity = RARITY_ORDER[targetIdx];
-  // element: majority element among chosen essences
-  const elCount = {};
-  chosen.forEach(e=>{ elCount[e.element]=(elCount[e.element]||0)+1; });
-  const element = Object.keys(elCount).sort((a,b)=>elCount[b]-elCount[a])[0];
+  const {chance, pure} = craftTierUpChance(chosen, kern);
+  const elements = Array.from(new Set(chosen.map(e=>e.element)));
 
-  // consume inputs
   state.essences = state.essences.filter(e=>!selectedEssenceIds.has(e.id));
   if(kern) state.kerns = state.kerns.filter(k=>k.id!==kern.id);
 
-  const durationMs = CRAFT_HOURS[targetRarity]*H*speedMult(level);
+  const durationMs = CRAFT_HOURS[baseRarity]*H*speedMult(level);
   const now = Date.now();
   state.crafting.push({
-    id:uid(), name, rarity:targetRarity, element, startedAt:now, finishAt: now+durationMs,
-    inputNames: chosen.map(e=>e.name)
+    id:uid(), name, category:craftCategory, type, baseRarity, tierUpChance:chance, pure, elements,
+    inputCount: chosen.length,
+    startedAt:now, finishAt: now+durationMs
   });
 
   selectedEssenceIds = new Set();
@@ -748,10 +755,21 @@ function collectCraft(jobId){
   const job = state.crafting[idx];
   if(Date.now() < job.finishAt) return;
   state.crafting.splice(idx,1);
-  state.items.push({id:uid(), name:job.name, rarity:job.rarity, element:job.element, finishedAt:Date.now()});
+
+  let finalIdx = RARITY_IDX(job.baseRarity);
+  const upgraded = Math.random() < job.tierUpChance;
+  if(upgraded) finalIdx = Math.min(4, finalIdx+1);
+  const finalRarity = RARITY_ORDER[finalIdx];
+  const abilitySlots = rollAbilitySlots(finalIdx);
+
+  state.items.push({
+    id:uid(), name:job.name, category:job.category, type:job.type,
+    rarity:finalRarity, upgraded, elements:job.elements, pure:job.pure,
+    abilitySlots, finishedAt:Date.now()
+  });
   state.masteryCraftCount++;
   saveState();
-  toast(`${job.name} fertiggestellt!`);
+  toast(upgraded ? `${job.name} fertig — Aufwertung gelungen! (${finalRarity})` : `${job.name} fertiggestellt (${finalRarity})`);
   renderAll();
 }
 
@@ -768,13 +786,12 @@ function fmtRemain(ms){
   if(m>0) return `${m}m ${s}s`;
   return `${s}s`;
 }
-
-function tokenHTML({icon, name, rarity, sub, actionHTML, color}){
+function tokenHTML({icon, name, rarity, sub, extraTags, actionHTML, color}){
   return `<div class="token" style="--tokencolor:${color||'var(--brass)'}">
     <div class="elico">${icon}</div>
     <div class="meta">
       <div class="name">${name}</div>
-      <div class="tags"><span class="rarity-badge ${RARITY_CLASS[rarity]}">${rarity}</span> ${sub||''}</div>
+      <div class="tags"><span class="rarity-badge ${RARITY_CLASS[rarity]}">${rarity}</span>${extraTags||''} ${sub?`<span>${sub}</span>`:''}</div>
     </div>
     <div class="action">${actionHTML||''}</div>
   </div>`;
@@ -783,6 +800,16 @@ const ELCOLOR = {fire:"var(--fire)",ice:"var(--ice)",water:"var(--water)",thunde
 
 // ---------- RENDER ----------
 function renderLager(){
+  document.getElementById('cnt-items').textContent = state.items.length;
+  document.getElementById('list-items').innerHTML = state.items.length ? state.items.slice().reverse().map(it=>{
+    const elIcons = it.elements.map(e=>ELEMENT_ICON[e]).join('');
+    const primaryColor = ELCOLOR[it.elements[0]] || 'var(--brass)';
+    let extra = `<span class="type-badge">${it.category} · ${it.type}</span>`;
+    if(it.pure) extra += `<span class="ability-badge">rein</span>`;
+    if(it.abilitySlots>0) extra += `<span class="ability-badge">🔮 x${it.abilitySlots}</span>`;
+    return tokenHTML({icon:elIcons, name:it.name, rarity:it.rarity, extraTags:extra, color:primaryColor});
+  }).join('') : `<div class="empty">Noch keine Items geschmiedet.</div>`;
+
   document.getElementById('cnt-materials').textContent = state.materials.length;
   document.getElementById('list-materials').innerHTML = state.materials.length ? state.materials.map(m=>
     tokenHTML({icon:ELEMENT_ICON[m.element], name:m.name, rarity:m.rarity, sub:m.monster, color:ELCOLOR[m.element]})
@@ -797,11 +824,6 @@ function renderLager(){
   document.getElementById('list-essences').innerHTML = state.essences.length ? state.essences.map(e=>
     tokenHTML({icon:ELEMENT_ICON[e.element], name:e.name, rarity:e.rarity, sub:e.sourceMonster, color:ELCOLOR[e.element]})
   ).join('') : `<div class="empty">Noch keine Essenzen veredelt.</div>`;
-
-  document.getElementById('cnt-items').textContent = state.items.length;
-  document.getElementById('list-items').innerHTML = state.items.length ? state.items.slice().reverse().map(it=>
-    tokenHTML({icon:"✨", name:it.name, rarity:it.rarity, sub:ELEMENT_NAME[it.element], color:ELCOLOR[it.element]})
-  ).join('') : `<div class="empty">Noch keine Items geschmiedet.</div>`;
 }
 
 function renderVeredeln(){
@@ -849,12 +871,13 @@ function renderSchmieden(){
     const total = job.finishAt - job.startedAt;
     const pct = Math.min(100, Math.max(0, 100 - (remain/total*100)));
     const done = remain<=0;
-    return `<div class="token" style="--tokencolor:${ELCOLOR[job.element]}; display:block;">
+    const elIcons = job.elements.map(e=>ELEMENT_ICON[e]).join('');
+    return `<div class="token" style="--tokencolor:${ELCOLOR[job.elements[0]]}; display:block;">
       <div style="display:flex; align-items:center; gap:10px;">
-        <div class="elico">${ELEMENT_ICON[job.element]}</div>
+        <div class="elico">${elIcons}</div>
         <div class="meta">
           <div class="name">${job.name}</div>
-          <div class="tags"><span class="rarity-badge ${RARITY_CLASS[job.rarity]}">${job.rarity}</span> ${job.inputNames.length} Essenzen</div>
+          <div class="tags"><span class="rarity-badge ${RARITY_CLASS[job.baseRarity]}">${job.baseRarity}+</span> <span class="type-badge">${job.category} · ${job.type}</span></div>
         </div>
         <div class="action">
           <button class="btn-primary btn-small" ${done?'':'disabled'} onclick="__collectCraft('${job.id}')">${done?'Abholen':'…'}</button>
@@ -913,22 +936,14 @@ function renderMastery(){
   document.getElementById('mr-speed').textContent = `${Math.round((1-speedMult(rl))*100)}%`;
   document.getElementById('mr-slots').textContent = refineSlots(rl);
   document.getElementById('mr-count').textContent = `${state.masteryRefineCount} (${state.masteryRefineCount%5}/5 bis nächste Stufe)`;
-  document.getElementById('mr-track').innerHTML = Array.from({length:10}).map((_,i)=>{
-    let cls='mastery-pip'+(i<rl?' filled':'');
-    if(i===4) cls+=' mark5'; if(i===7) cls+=' mark8';
-    return `<div class="${cls}"></div>`;
-  }).join('');
+  document.getElementById('mr-track').innerHTML = Array.from({length:10}).map((_,i)=>`<div class="mastery-pip${i<rl?' filled':''}"></div>`).join('');
 
   document.getElementById('mc-level').textContent = `${cl} / 10`;
   document.getElementById('mc-speed').textContent = `${Math.round((1-speedMult(cl))*100)}%`;
   document.getElementById('mc-slots').textContent = craftSlots(cl);
   document.getElementById('mc-maxinputs').textContent = maxCraftInputs(cl);
   document.getElementById('mc-count').textContent = `${state.masteryCraftCount} (${state.masteryCraftCount%5}/5 bis nächste Stufe)`;
-  document.getElementById('mc-track').innerHTML = Array.from({length:10}).map((_,i)=>{
-    let cls='mastery-pip'+(i<cl?' filled':'');
-    if(i===4) cls+=' mark5'; if(i===7) cls+=' mark8';
-    return `<div class="${cls}"></div>`;
-  }).join('');
+  document.getElementById('mc-track').innerHTML = Array.from({length:10}).map((_,i)=>`<div class="mastery-pip${i<cl?' filled':''}"></div>`).join('');
 }
 
 document.getElementById('btn-reset').addEventListener('click', ()=>{
