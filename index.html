@@ -208,6 +208,26 @@
     opacity:0; pointer-events:none; transition:opacity .25s; max-width:88vw; text-align:center;
   }
   .toast.show{opacity:1;}
+
+  .item-card{
+    background:var(--panel-raised);
+    border:1px solid var(--panel-line);
+    border-left:3px solid var(--tokencolor,var(--brass));
+    border-radius:10px;
+    padding:11px 12px;
+    margin-bottom:10px;
+  }
+  .item-card-top{display:flex; align-items:flex-start; gap:10px;}
+  .item-card-top .elico{font-size:18px; flex-shrink:0; padding-top:2px;}
+  .item-card-top .meta{flex:1; min-width:0;}
+  .item-card-top .name{font-size:14.5px; font-weight:700; color:var(--text); margin-bottom:4px;}
+  .item-card-top .tags{display:flex; flex-wrap:wrap; gap:5px; align-items:center;}
+  .stat-row{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; padding-top:9px; border-top:1px solid var(--panel-line);}
+  .stat-chip{
+    font-size:11.5px; padding:4px 9px; border-radius:6px;
+    background:#22282a; color:var(--text); border:1px solid var(--panel-line);
+  }
+  .item-card-bottom{margin-top:8px;}
 </style>
 </head>
 <body>
@@ -317,6 +337,7 @@
         · Katalysator (Kern): 5–25% je nach Kern-Seltenheit<br>
         · Reines Element (alle Essenzen gleiches Element): +15%<br>
         · Jede Essenz über dem Minimum (2) hinaus: +5%<br>
+        <b>Stats</b> nach finaler Seltenheit: Gewöhnlich 1 · Selten 2 · Episch 3 · Legendär 4 · Mystisch 5 Stats, jeweils bis zu 5/10/15/20/25% Bonus (zufällig 1% bis Maximum). Bei Rüstung ist der erste Stat an den Slot gebunden (Schuhe→Geschwindigkeit, Handschuhe→Stärke, Brust→Leben, Beinrüstung→Ausdauer, Helm→Intelligenz/Magie, Schmuck→Intelligenz/Magie/Mana), Rest zufällig. Bei Waffen ist alles zufällig.<br>
         <b>Fähigkeits-Slots</b> nach finaler Seltenheit: Gewöhnlich 0 · Selten 0–1 · Episch 1–2 · Legendär 1–2 · Mystisch 1–3 (zufällig ausgewürfelt, du bestimmst die Fähigkeiten selbst).
       </div>
     </div>
@@ -424,6 +445,41 @@ const RARITY_IDX = r => RARITY_ORDER.indexOf(r);
 
 const WEAPON_TYPES = ["Langschwert","Katana","Großschwert","Axt","Bogen","Kampfhandschuhe","Zauberstab","Dolch","Rapier","Peitsche"];
 const ARMOR_SLOTS = ["Helm","Brust","Beinrüstung","Schuhe","Handschuhe","Schmuck"];
+
+const CORE_STATS = ["Stärke","Geschwindigkeit","Leben","Intelligenz","Magie","Ausdauer"];
+const STAT_ICON = {"Stärke":"💪","Geschwindigkeit":"⚡","Leben":"❤️","Intelligenz":"🧠","Magie":"✨","Ausdauer":"🔋","Mana":"🔷"};
+const ARMOR_PRIMARY_STAT = {
+  "Helm":["Intelligenz","Magie"],
+  "Brust":["Leben"],
+  "Beinrüstung":["Ausdauer"],
+  "Schuhe":["Geschwindigkeit"],
+  "Handschuhe":["Stärke"],
+  "Schmuck":["Intelligenz","Magie","Mana"]
+};
+const RARITY_STAT_SLOTS = {0:1, 1:2, 2:3, 3:4, 4:5}; // rarityIdx -> Anzahl Stats
+const RARITY_MAX_PCT = {0:5, 1:10, 2:15, 3:20, 4:25};
+
+function rollItemStats(category, type, rarityIdx){
+  const maxPct = RARITY_MAX_PCT[rarityIdx];
+  const slotCount = RARITY_STAT_SLOTS[rarityIdx];
+  let pool = CORE_STATS.slice();
+  let chosen = [];
+
+  if(category==='Rüstung'){
+    const options = ARMOR_PRIMARY_STAT[type] || pool;
+    const primary = options[Math.floor(Math.random()*options.length)];
+    chosen.push(primary);
+    pool = pool.filter(s=>s!==primary);
+  }
+  // Waffe: komplett zufällig, auch der erste Slot
+
+  while(chosen.length < slotCount && pool.length>0){
+    const i = Math.floor(Math.random()*pool.length);
+    chosen.push(pool[i]);
+    pool.splice(i,1);
+  }
+  return chosen.map(stat => ({stat, pct: 1 + Math.floor(Math.random()*maxPct)}));
+}
 
 const REFINE_HOURS = {"Gewöhnlich":2,"Selten":6,"Episch":16,"Legendär":36,"Mystisch":72};
 const CRAFT_HOURS  = {"Gewöhnlich":4,"Selten":10,"Episch":24,"Legendär":48,"Mystisch":96};
@@ -761,11 +817,12 @@ function collectCraft(jobId){
   if(upgraded) finalIdx = Math.min(4, finalIdx+1);
   const finalRarity = RARITY_ORDER[finalIdx];
   const abilitySlots = rollAbilitySlots(finalIdx);
+  const stats = rollItemStats(job.category, job.type, finalIdx);
 
   state.items.push({
     id:uid(), name:job.name, category:job.category, type:job.type,
     rarity:finalRarity, upgraded, elements:job.elements, pure:job.pure,
-    abilitySlots, finishedAt:Date.now()
+    abilitySlots, stats, finishedAt:Date.now()
   });
   state.masteryCraftCount++;
   saveState();
@@ -796,19 +853,60 @@ function tokenHTML({icon, name, rarity, sub, extraTags, actionHTML, color}){
     <div class="action">${actionHTML||''}</div>
   </div>`;
 }
+function itemCardHTML(it){
+  const elIcons = it.elements.map(e=>ELEMENT_ICON[e]).join(' ');
+  const primaryColor = ELCOLOR[it.elements[0]] || 'var(--brass)';
+  const hasStats = Array.isArray(it.stats);
+  const hasAbilityInfo = typeof it.abilitySlots === 'number';
+  const statChips = hasStats ? it.stats.map(s=>
+    `<span class="stat-chip">${STAT_ICON[s.stat]||''} ${s.stat} +${s.pct}%</span>`
+  ).join('') : '';
+
+  let bottomHTML;
+  if(!hasStats || !hasAbilityInfo){
+    bottomHTML = `<div class="hint" style="margin:8px 0 6px;">Dieses Item wurde vor dem Stat-System erstellt — noch keine Stats/Fähigkeits-Slots gewürfelt. Nichts geht verloren, du kannst es jetzt nachholen.</div>
+      <button class="btn-ghost btn-small" onclick="__retrofitStats('${it.id}')">🎲 Stats jetzt würfeln</button>`;
+  }else{
+    bottomHTML = it.abilitySlots>0 ? `<span class="ability-badge">🔮 ${it.abilitySlots} Fähigkeits-Slot${it.abilitySlots>1?'s':''}</span>` : `<span class="type-badge">Kein Fähigkeits-Slot</span>`;
+  }
+
+  return `<div class="item-card" style="--tokencolor:${primaryColor}">
+    <div class="item-card-top">
+      <div class="elico">${elIcons}</div>
+      <div class="meta">
+        <div class="name">${it.name}</div>
+        <div class="tags">
+          <span class="rarity-badge ${RARITY_CLASS[it.rarity]}">${it.rarity}</span>
+          <span class="type-badge">${it.category} · ${it.type}</span>
+          ${it.pure?`<span class="ability-badge">rein</span>`:''}
+          ${it.upgraded?`<span class="ability-badge">↑ aufgewertet</span>`:''}
+        </div>
+      </div>
+    </div>
+    ${statChips ? `<div class="stat-row">${statChips}</div>` : ''}
+    <div class="item-card-bottom">
+      ${bottomHTML}
+    </div>
+  </div>`;
+}
+window.__retrofitStats = function(itemId){
+  const it = state.items.find(i=>i.id===itemId);
+  if(!it) return;
+  const rarityIdx = RARITY_IDX(it.rarity);
+  if(!Array.isArray(it.stats)) it.stats = rollItemStats(it.category, it.type, rarityIdx);
+  if(typeof it.abilitySlots !== 'number') it.abilitySlots = rollAbilitySlots(rarityIdx);
+  saveState();
+  toast(`${it.name}: Stats gewürfelt`);
+  renderAll();
+};
 const ELCOLOR = {fire:"var(--fire)",ice:"var(--ice)",water:"var(--water)",thunder:"var(--thunder)",light:"var(--light)",shadow:"var(--shadow)",wind:"var(--wind)",earth:"var(--earth)"};
 
 // ---------- RENDER ----------
 function renderLager(){
   document.getElementById('cnt-items').textContent = state.items.length;
-  document.getElementById('list-items').innerHTML = state.items.length ? state.items.slice().reverse().map(it=>{
-    const elIcons = it.elements.map(e=>ELEMENT_ICON[e]).join('');
-    const primaryColor = ELCOLOR[it.elements[0]] || 'var(--brass)';
-    let extra = `<span class="type-badge">${it.category} · ${it.type}</span>`;
-    if(it.pure) extra += `<span class="ability-badge">rein</span>`;
-    if(it.abilitySlots>0) extra += `<span class="ability-badge">🔮 x${it.abilitySlots}</span>`;
-    return tokenHTML({icon:elIcons, name:it.name, rarity:it.rarity, extraTags:extra, color:primaryColor});
-  }).join('') : `<div class="empty">Noch keine Items geschmiedet.</div>`;
+  document.getElementById('list-items').innerHTML = state.items.length ? state.items.slice().reverse().map(it=>
+    itemCardHTML(it)
+  ).join('') : `<div class="empty">Noch keine Items geschmiedet.</div>`;
 
   document.getElementById('cnt-materials').textContent = state.materials.length;
   document.getElementById('list-materials').innerHTML = state.materials.length ? state.materials.map(m=>
